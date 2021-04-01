@@ -6,7 +6,11 @@
 static int main_ret = 0;
 static int test_count = 0;
 static int test_pass = 0;
-
+/*
+定义一套测试框架：
+先在头文件里确定API，
+然后根据TDD思想实现这些API函数
+*/
 #define EXPECT_EQ_BASE(equality, expect, actual, format) \
     do {\
         test_count++;\
@@ -57,11 +61,33 @@ static void test_parse_root_not_singular() {
     EXPECT_EQ_INT(LEPT_NULL, lept_get_type(&v));
 }
 
+static void test_parse_true() {
+    lept_value v;
+    v.type = LEPT_FALSE;
+    EXPECT_EQ_INT(LEPT_PARSE_OK, lept_parse(&v, "true"));
+    EXPECT_EQ_INT(LEPT_TRUE, lept_get_type(&v));
+}
+
+static void test_parse_false() {
+    lept_value v;
+    v.type = LEPT_FALSE;
+    EXPECT_EQ_INT(LEPT_PARSE_OK, lept_parse(&v, "false"));
+    EXPECT_EQ_INT(LEPT_FALSE, lept_get_type(&v));
+}
+
+/*
+C语言中的static 函数：文件作用域、内部链接、静态存储器
+定义加static，引用加extern
+作用是：限制本函数只在该翻译单元内有效
+此外，编译器会警告未被使用的static函数[-Wunused-function]
+*/
 static void test_parse() {
     test_parse_null();
     test_parse_expect_value();
     test_parse_invalid_value();
     test_parse_root_not_singular();
+    test_parse_true();
+    test_parse_false();
 }
 
 int main() {
