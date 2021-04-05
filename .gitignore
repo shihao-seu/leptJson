@@ -54,3 +54,5 @@ dkms.conf
 # user-defined
 build
 build_2425
+debug
+debug_2425
