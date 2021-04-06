@@ -4,7 +4,7 @@
 #include <errno.h>   /* errno */
 #include <math.h>    /* HUGE_VAL */
 #include <string.h>  /* memcpy */
-
+#include <stdio.h>
 
 #ifndef LEPT_PARSE_STACK_INIT_SIZE
 #define LEPT_PARSE_STACK_INIT_SIZE 256  // 栈初始大小
@@ -17,7 +17,9 @@
 #define EXPECT(c, ch)       do { assert(*c->json == (ch)); c->json++; } while (0)
 #define ISDIGIT(ch)         ((ch) >= '0' && (ch) <= '9')
 #define ISDIGIT1TO9(ch)     ((ch) >= '1' && (ch) <= '9')
+#define ISHEXDIGIT(ch)      (ISDIGIT(ch) || ((ch) >= 'a' && (ch) <= 'f') || ((ch) >= 'A' && (ch) <= 'F'))
 #define ISWHITESPACE(ch)    ((ch) == ' ' || (ch) == '\t' || (ch) == '\n' || (ch) == '\r')
+#define STRING_ERROR(ret)   do { c->top = 0; return ret; } while (0) 
 
 
 typedef struct {
@@ -137,10 +139,45 @@ static int lepr_parse_number(lept_context* c, lept_value* v) {
     return LEPT_PARSE_OK;
 }
 
+//解析 4 位十六进制整数为码点
+static const char* lept_parse_hex4(const char* p, unsigned* u) {
+    *u = 0;
+    unsigned v = 0;
+    for (size_t i = 4; i; i--) {
+        if (!ISHEXDIGIT(*p))
+            return NULL;
+        v = (*p >= 'a') ? (*p - 'a' + 10) : ((*p >= 'A') ? (*p - 'A' + 10) : (*p - '0'));
+        *u += v << (4*(i-1));
+        p++;
+    }
+    return p;
+}
+
+// 把这个码点编码成 UTF-8
+static void lept_encode_utf8(lept_context* c, unsigned u) {
+    assert(u >= 0x0000 && u <= 0x10FFFF);
+    if (u <= 0x7F) {
+        lept_context_push(c, u & 0xFF);
+    } else if (u <= 0x7FF) {
+        lept_context_push(c, 0xC0 | ((u >> 6) & 0xFF));
+        lept_context_push(c, 0x80 | ( u       & 0x3F));
+    } else if (u <= 0xFFFF) {
+        lept_context_push(c, 0xE0 | ((u >> 12) & 0xFF)); /* 0xE0 = 11100000 */
+        lept_context_push(c, 0x80 | ((u >>  6) & 0x3F)); /* 0x80 = 10000000 */
+        lept_context_push(c, 0x80 | ( u        & 0x3F)); /* 0x3F = 00111111 */
+    } else {
+        lept_context_push(c, 0xF0 | ((u >> 18) & 0xFF));
+        lept_context_push(c, 0x80 | ((u >> 12) & 0x3F));
+        lept_context_push(c, 0x80 | ((u >>  6) & 0x3F));
+        lept_context_push(c, 0x80 | ( u        & 0x3F));
+    }
+}
+
 // 解析字符串
 static int lept_parse_string(lept_context* c, lept_value* v) {
     EXPECT(c, '\"');
     const char* p = c->json;
+    unsigned u, L;
     while (1) {
         char ch = *p++;
         switch (ch) {
@@ -149,8 +186,7 @@ static int lept_parse_string(lept_context* c, lept_value* v) {
                 c->json = p;
                 return LEPT_PARSE_OK;
             case '\0':
-                c->top = 0;
-                return LEPT_PARSE_MISS_QUOTATION_MARK;
+                STRING_ERROR(LEPT_PARSE_MISS_QUOTATION_MARK);
             case '\\':
                 switch (*p++) {
                     case '\"':lept_context_push(c, '\"'); break;
@@ -161,16 +197,29 @@ static int lept_parse_string(lept_context* c, lept_value* v) {
                     case 'n': lept_context_push(c, '\n'); break;
                     case 'r': lept_context_push(c, '\r'); break;
                     case 't': lept_context_push(c, '\t'); break;
+                    case 'u':
+                        if (!(p = lept_parse_hex4(p, &u)))
+                            STRING_ERROR(LEPT_PARSE_INVALID_UNICODE_HEX);
+                        // 处理代理对surrogate pair
+                        if ( u >= 0xD800 && u <= 0xDBFF ) {
+                            if ( *p++ != '\\' )
+                                STRING_ERROR(LEPT_PARSE_INVALID_UNICODE_SURROGATE);
+                            if ( *p++ != 'u' )
+                                STRING_ERROR(LEPT_PARSE_INVALID_UNICODE_SURROGATE);                     
+                            p = lept_parse_hex4(p, &L);
+                            if (!p || L < 0xDC00 || L > 0xDFFF )
+                                STRING_ERROR(LEPT_PARSE_INVALID_UNICODE_SURROGATE);
+                            u = 0x10000 + (u - 0xD800) * 0x400 + (L - 0xDC00);
+                        }
+                        lept_encode_utf8(c, u);
+                        break;
                     default:
-                        c->top = 0;
-                        return LEPT_PARSE_INVALID_STRING_ESCAPE;
+                        STRING_ERROR(LEPT_PARSE_INVALID_STRING_ESCAPE);
                 }
                 break; // !!! 小小break，容易忽视，问题多多
             default:
-                if (ch < 0x20) {
-                    c->top = 0;
-                    return LEPT_PARSE_INVALID_STRING_CHAR;
-                }
+                if ((unsigned char)ch < 0x20)
+                    STRING_ERROR(LEPT_PARSE_INVALID_STRING_CHAR);
                 lept_context_push(c, ch);
         }
     }  
@@ -183,7 +232,7 @@ static int lept_parse_value(lept_context* c, lept_value* v) {
         case 't':   return lept_parse_literal(c, v, "true", LEPT_TRUE);
         case 'f':   return lept_parse_literal(c, v, "false", LEPT_FALSE);
         case 'n':   return lept_parse_literal(c, v, "null", LEPT_NULL);
-        case '"':  return lept_parse_string(c, v);
+        case '"':   return lept_parse_string(c, v);
         default:    return lepr_parse_number(c, v);
     }
 }

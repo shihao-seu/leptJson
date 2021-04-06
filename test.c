@@ -62,7 +62,12 @@ static int test_pass = 0;
         EXPECT_EQ_STRING(str, lept_get_string(&v), lept_get_string_length(&v));\
         lept_free(&v);\
     } while (0)
-
+/*
+C语言中的static 函数：文件作用域、内部链接、静态存储器
+定义加static，引用加extern
+作用是：限制本函数只在该翻译单元内有效
+此外，编译器会警告未被使用的static函数[-Wunused-function]
+*/
 /* 
 可以用宏将所有的测试单元整合在一起，体现了代码重构的思想之————DRY（don't repeat yourself）
 测试null/true/false三种类型，统称literal
@@ -78,12 +83,6 @@ static void test_parse_literal() {
     TEST_FALSE("false");
 }
 
-/*
-C语言中的static 函数：文件作用域、内部链接、静态存储器
-定义加static，引用加extern
-作用是：限制本函数只在该翻译单元内有效
-此外，编译器会警告未被使用的static函数[-Wunused-function]
-*/
 static void test_parse_number() {
     TEST_NUMBER(0.0, "0");
     TEST_NUMBER(0.0, "-0");
@@ -139,6 +138,12 @@ static void test_parse_string() {
     TEST_STRING("Hello", "\"Hello\"");
     TEST_STRING("Hello\nWorld", "\"Hello\\nWorld\"");
     TEST_STRING("\" \\ / \b \f \n \r \t", "\"\\\" \\\\ \\/ \\b \\f \\n \\r \\t\"");
+    TEST_STRING("Hello\x11World", "\"Hello\\u0011World\"");
+    TEST_STRING("\x24", "\"\\u0024\"");         /* Dollar sign U+0024 */
+    TEST_STRING("\xC2\xA2", "\"\\u00A2\"");     /* Cents sign U+00A2 */
+    TEST_STRING("\xE2\x82\xAC", "\"\\u20AC\""); /* Euro sign U+20AC */
+    TEST_STRING("\xF0\x9D\x84\x9E", "\"\\uD834\\uDD1E\"");  /* G clef sign U+1D11E */
+    TEST_STRING("\xF0\x9D\x84\x9E", "\"\\ud834\\udd1e\"");  /* G clef sign U+1D11E */
 }
 
 static void test_parse_invalid_str() {
@@ -148,7 +153,30 @@ static void test_parse_invalid_str() {
     TEST_ERROR(LEPT_PARSE_INVALID_STRING_ESCAPE, "\"\\x12\""); /* \x12 */
     TEST_ERROR(LEPT_PARSE_INVALID_STRING_CHAR, "\"\x01\""); /* %x01 */
     TEST_ERROR(LEPT_PARSE_INVALID_STRING_CHAR, "\"\x1F\""); /* %x1F */
-    TEST_ERROR(LEPT_PARSE_MISS_QUOTATION_MARK, "\"hell");
+    TEST_ERROR(LEPT_PARSE_MISS_QUOTATION_MARK, "\"");
+    TEST_ERROR(LEPT_PARSE_MISS_QUOTATION_MARK, "\"abc");
+    TEST_ERROR(LEPT_PARSE_MISS_QUOTATION_MARK, "\"\\u00A2");
+}
+
+static void test_parse_invalid_unicode() {
+    TEST_ERROR(LEPT_PARSE_INVALID_UNICODE_HEX, "\"\\u\"");
+    TEST_ERROR(LEPT_PARSE_INVALID_UNICODE_HEX, "\"\\u0\"");
+    TEST_ERROR(LEPT_PARSE_INVALID_UNICODE_HEX, "\"\\u01\"");
+    TEST_ERROR(LEPT_PARSE_INVALID_UNICODE_HEX, "\"\\u012\"");
+    TEST_ERROR(LEPT_PARSE_INVALID_UNICODE_HEX, "\"\\u/000\"");
+    TEST_ERROR(LEPT_PARSE_INVALID_UNICODE_HEX, "\"\\uG000\"");
+    TEST_ERROR(LEPT_PARSE_INVALID_UNICODE_HEX, "\"\\u0/00\"");
+    TEST_ERROR(LEPT_PARSE_INVALID_UNICODE_HEX, "\"\\u0G00\"");
+    TEST_ERROR(LEPT_PARSE_INVALID_UNICODE_HEX, "\"\\u00/0\"");
+    TEST_ERROR(LEPT_PARSE_INVALID_UNICODE_HEX, "\"\\u00G0\"");
+    TEST_ERROR(LEPT_PARSE_INVALID_UNICODE_HEX, "\"\\u000/\"");
+    TEST_ERROR(LEPT_PARSE_INVALID_UNICODE_HEX, "\"\\u000G\"");
+    TEST_ERROR(LEPT_PARSE_INVALID_UNICODE_HEX, "\"\\u 123\"");
+    TEST_ERROR(LEPT_PARSE_INVALID_UNICODE_SURROGATE, "\"\\uD800\"");
+    TEST_ERROR(LEPT_PARSE_INVALID_UNICODE_SURROGATE, "\"\\uDBFF\"");
+    TEST_ERROR(LEPT_PARSE_INVALID_UNICODE_SURROGATE, "\"\\uD800\\\\\"");
+    TEST_ERROR(LEPT_PARSE_INVALID_UNICODE_SURROGATE, "\"\\uD800\\uDBFF\"");
+    TEST_ERROR(LEPT_PARSE_INVALID_UNICODE_SURROGATE, "\"\\uD800\\uE000\"");
 }
 
 static void test_access_null() {
@@ -196,6 +224,7 @@ int main() {
     test_parse_invalid_num();
     test_parse_string();
     test_parse_invalid_str();
+    test_parse_invalid_unicode();
 
     test_access_null();
     test_access_boolean();

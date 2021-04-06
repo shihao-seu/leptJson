@@ -24,7 +24,9 @@ enum {
     LEPT_PARSE_NUMBER_TOO_BIG,     // 数值超过DOUBLE值范围
     LEPT_PARSE_MISS_QUOTATION_MARK,    // 缺少引号
     LEPT_PARSE_INVALID_STRING_ESCAPE,  // 无效的转义 
-    LEPT_PARSE_INVALID_STRING_CHAR     // 无效的字符
+    LEPT_PARSE_INVALID_STRING_CHAR,    // 无效的字符
+    LEPT_PARSE_INVALID_UNICODE_HEX,        // \u之后不是4位十六进制数字
+    LEPT_PARSE_INVALID_UNICODE_SURROGATE,  // 缺少低代理项或low surrogate不在正确范围内
 };
 
 #define lept_init(v) do { (v)->type = LEPT_NULL; } while (0)
@@ -57,6 +59,5 @@ const char* lept_get_string(const lept_value* v);
 // 获取字符串长度
 size_t lept_get_string_length(const lept_value* v);
 
-void test_context_push();// 临时测试
 
 #endif /* LEPTJSON_H__ */
