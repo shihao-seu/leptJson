@@ -43,7 +43,8 @@ enum {
     LEPT_PARSE_MISS_COMMA_OR_SQUARE_BRACKET, // 缺少逗号或者右方括号
     LEPT_PARSE_MISS_KEY,                     // 缺少键
     LEPT_PARSE_MISS_COLON,                   // 缺少冒号
-    LEPT_PARSE_MISS_COMMA_OR_CURLY_BRACKET   // 缺少逗号或者右花括号
+    LEPT_PARSE_MISS_COMMA_OR_CURLY_BRACKET,  // 缺少逗号或者右花括号
+    LEPT_STRINGIFY_OK
 };
 
 #define lept_init(v) do { (v)->type = LEPT_NULL; } while (0)
@@ -91,6 +92,10 @@ const char* lept_get_object_key(const lept_value* v, size_t index);
 size_t lept_get_object_key_length(const lept_value* v, size_t index);
 // 获取对象成员值
 lept_value* lept_get_object_value(const lept_value* v, size_t index);
+
+
+// 生成json格式字符串
+int lept_stringify(const lept_value* v, char** json, size_t* length);
 
 
 #endif /* LEPTJSON_H__ */
