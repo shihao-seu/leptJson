@@ -10,9 +10,9 @@ typedef struct t_lept_member lept_member;
 
 struct t_lept_value{
     union { // 使用枚举可以节约空间
-        struct { lept_member* m; size_t size; }o; /* obeject*/
+        struct { lept_member* m; size_t size, capacity; }o; /* obeject*/
         struct { char* str; size_t size; }s;      /* string */
-        struct { lept_value* e; size_t size; }a;  /* array  */
+        struct { lept_value* e; size_t size, capacity; }a;  /* array  */
         double n;                                 /* number */
     }u;
     lept_type type;
@@ -47,6 +47,7 @@ enum {
     LEPT_STRINGIFY_OK
 };
 
+#define LEPT_KEY_NOT_EXIST ((size_t)-1)
 #define lept_init(v) do { (v)->type = LEPT_NULL; } while (0)
 #define TRUE 1
 #define FALSE 0
@@ -56,6 +57,14 @@ int lept_parse(lept_value* v, const char* json);
 
 // 清空分配的内存
 void lept_free(lept_value* v);
+// 比较两个json是否相等
+int lept_is_equal(const lept_value* lhs, const lept_value* rhs);
+// 深度复制lept_value
+void lept_copy(lept_value* dst, const lept_value* src);
+// 移动操作
+void lept_move(lept_value* dst, lept_value* src);
+// 交换操作
+void lept_swap(lept_value* lhs, lept_value* rhs);
 
 // 获取类型
 lept_type lept_get_type(const lept_value* v);
@@ -83,6 +92,24 @@ size_t lept_get_string_length(const lept_value* v);
 size_t lept_get_array_size(const lept_value* v);
 // 获取数组的元素
 lept_value* lept_get_array_element(const lept_value* v, size_t index);
+// 设置数组初始容量
+void lept_set_array(lept_value* v, size_t capacity);
+// 获取数组容量大小
+size_t lept_get_array_capacity(const lept_value* v);
+// 调整数组容量大小，类似于vector.reserve()
+void lept_reserve_array(lept_value* v, size_t capacity);
+// 将capacity减少为size相同大小，类似于vector.shrink_to_fit()
+void lept_shrink_array(lept_value* v);
+// 数组尾后添加新元素
+lept_value* lept_pushback_array_element(lept_value* v);
+// 数组弹出尾后元素
+void lept_popback_array_element(lept_value* v);
+// 在 index 位置插入一个元素
+lept_value* lept_insert_array_element(lept_value* v, size_t index);
+// 删去在 index 位置开始共 count 个元素（不改容量）
+void lept_erase_array_element(lept_value* v, size_t index, size_t count);
+// 清除所有元素（不改容量）
+void lept_clear_array(lept_value* v);
 
 // 获取对象大小
 size_t lept_get_object_size(const lept_value* v);
@@ -92,10 +119,29 @@ const char* lept_get_object_key(const lept_value* v, size_t index);
 size_t lept_get_object_key_length(const lept_value* v, size_t index);
 // 获取对象成员值
 lept_value* lept_get_object_value(const lept_value* v, size_t index);
+// 按key寻找obj的key
+size_t lept_find_object_index(const lept_value* v, const char* key, size_t klen);
+// 按key寻找obj的value
+lept_value* lept_find_object_value(const lept_value* v, const char* key, size_t klen);
+// 设置obj初始容量
+void lept_set_object(lept_value* v, size_t capacity);
+// 获取obj容量大小
+size_t lept_get_object_capacity(const lept_value* v);
+// 调整obj容量大小，类似于vector.reserve()
+void lept_reserve_object(lept_value* v, size_t capacity);
+// 将capacity减少为size相同大小，类似于vector.shrink_to_fit()
+void lept_shrink_object(lept_value* v);
+// 根据key修改value,如果key不存在则添加一个key-value对
+lept_value* lept_set_object_value(lept_value* v, const char* key, size_t klen);
+// 根据index删除键值对
+void lept_remove_object_value_index(lept_value* v, size_t index);
+// 根据键删除键值对
+void lept_remove_object_value_key(lept_value* v, const char* key, size_t klen);
+// 清除所有元素（不改容量）
+void lept_clear_object(lept_value* v);
 
 
 // 生成json格式字符串
 int lept_stringify(const lept_value* v, char** json, size_t* length);
-
 
 #endif /* LEPTJSON_H__ */
