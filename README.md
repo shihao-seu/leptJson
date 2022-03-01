@@ -1,2 +1,2 @@
 # leptJson
-本库是学习/miloyip/json-tutorial，自建的一个远程项目库
+参考学习/miloyip/json-tutorial，一个简单的json parser
