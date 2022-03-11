@@ -1,16 +1,28 @@
+/*=============================================================================
+#  Author:           shihao - https://github.com/shihao-seu
+#  Email:            shihao10Civil@163.com
+#  FileName:         test.c
+#  Description:      测试驱动开发。此文件包含测试程序，需要链接 leptjson 库。
+#  Version:          0.0.1
+#  CreatingDate:     2022-Mar-Fri
+#  History:          None
+=============================================================================*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "leptjson.h"
 
-static int main_ret = 0;
-static int test_count = 0;
-static int test_pass = 0;
+static int main_ret = 0;    // 程序返回值
+static int test_count = 0;  // 统计总的测试条目 
+static int test_pass = 0;   // 成功测试条目
 /*
-定义一套测试框架：
-先在头文件里确定API，
-然后根据TDD思想实现这些API函数
+* 定义一套测试框架：
+* 先在头文件里确定API，
+* 然后根据TDD思想实现这些API函数
 */
+
+// 基本的测试框架，如果预取expect与实际actual相符（满足equality），则通过测试test_pass++，否则打印错误
 #define EXPECT_EQ_BASE(equality, expect, actual, format) \
     do {\
         test_count++;\
@@ -90,16 +102,12 @@ static int test_pass = 0;
         lept_free(&v1);\
         lept_free(&v2);\
     } while(0)
-/*
-C语言中的static 函数：文件作用域、内部链接、静态存储器
-定义加static，引用加extern
-作用是：限制本函数只在该翻译单元内有效
-此外，编译器会警告未被使用的static函数[-Wunused-function]
-*/
-/* 
-可以用宏将所有的测试单元整合在一起，体现了代码重构的思想之————DRY（don't repeat yourself）
-测试null/true/false三种类型，统称literal
-*/
+
+
+/**
+ * @brief: 字面值测试，包括null、true、false
+ * @notes: C语言中的static 函数：编译器会警告未被使用的static函数[-Wunused-function]
+ */
 static void test_parse_literal() {
     TEST_ERROR(LEPT_PARSE_EXPECT_VALUE, "");
     TEST_ERROR(LEPT_PARSE_EXPECT_VALUE, "   ");
@@ -111,6 +119,11 @@ static void test_parse_literal() {
     TEST_FALSE("false");
 }
 
+
+/**
+ * @brief: 数字类型测试
+ * 
+ */
 static void test_parse_number() {
     TEST_NUMBER(0.0, "0");
     TEST_NUMBER(0.0, "-0");
@@ -142,6 +155,11 @@ static void test_parse_number() {
     TEST_NUMBER(-1.7976931348623157e+308, "-1.7976931348623157e+308");
 }
 
+
+/**
+ * @brief : 测试无效数字类型
+ * 
+ */
 static void test_parse_invalid_num() {
     TEST_ERROR(LEPT_PARSE_INVALID_VALUE, "+0");
     TEST_ERROR(LEPT_PARSE_INVALID_VALUE, "+1");
@@ -160,6 +178,11 @@ static void test_parse_invalid_num() {
     TEST_ERROR(LEPT_PARSE_NUMBER_TOO_BIG, "-1e309");
 }
 
+
+/**
+ * @brief ：字符串测试
+ * 
+ */
 static void test_parse_string() {
     TEST_STRING("", "\"\"");
     TEST_STRING("\" /", "\"\\\" \\/\"");
@@ -174,6 +197,11 @@ static void test_parse_string() {
     TEST_STRING("\xF0\x9D\x84\x9E", "\"\\ud834\\udd1e\"");  /* G clef sign U+1D11E */
 }
 
+
+/**
+ * @brief ：无效字符串类型
+ * 
+ */
 static void test_parse_invalid_str() {
     TEST_ERROR(LEPT_PARSE_INVALID_STRING_ESCAPE, "\"\\v\""); /* \v */
     TEST_ERROR(LEPT_PARSE_INVALID_STRING_ESCAPE, "\"\\'\""); /* \' */
@@ -186,6 +214,11 @@ static void test_parse_invalid_str() {
     TEST_ERROR(LEPT_PARSE_MISS_QUOTATION_MARK, "\"\\u00A2");
 }
 
+
+/**
+ * @brief ：无效unicode编码
+ * 
+ */
 static void test_parse_invalid_unicode() {
     TEST_ERROR(LEPT_PARSE_INVALID_UNICODE_HEX, "\"\\u\"");
     TEST_ERROR(LEPT_PARSE_INVALID_UNICODE_HEX, "\"\\u0\"");
@@ -207,15 +240,22 @@ static void test_parse_invalid_unicode() {
     TEST_ERROR(LEPT_PARSE_INVALID_UNICODE_SURROGATE, "\"\\uD800\\uE000\"");
 }
 
+
+/**
+ * @brief ：数组类型测试
+ * 
+ */
 static void test_parse_array() {
     lept_value v;
 
+    // 是否成功解析数组
     lept_init(&v);
     EXPECT_EQ_INT(LEPT_PARSE_OK, lept_parse(&v, "[  ]"));
     EXPECT_EQ_INT(LEPT_ARRAY, lept_get_type(&v));
     EXPECT_EQ_SIZE_T(0, lept_get_array_size(&v));
     lept_free(&v);
 
+    // 是否成功解析数组内元素
     lept_init(&v);
     EXPECT_EQ_INT(LEPT_PARSE_OK, lept_parse(&v, "[ null , false , true , 123 , \"abc\" ]"));
     EXPECT_EQ_INT(LEPT_ARRAY, lept_get_type(&v));
@@ -229,6 +269,7 @@ static void test_parse_array() {
     EXPECT_EQ_STRING("abc", lept_get_string(lept_get_array_element(&v, 4)), lept_get_string_length(lept_get_array_element(&v, 4)));
     lept_free(&v);
 
+    // 嵌套数组测试
     lept_init(&v);
     EXPECT_EQ_INT(LEPT_PARSE_OK, lept_parse(&v, "[ [ ] , [ 0 ] , [ 0 , 1 ] , [ 0 , 1 , 2 ] ]"));
     EXPECT_EQ_INT(LEPT_ARRAY, lept_get_type(&v));
@@ -246,6 +287,11 @@ static void test_parse_array() {
     lept_free(&v);
 }
 
+
+/**
+ * @brief 测试解析无效数组
+ * 
+ */
 static void test_parse_invalid_array() {
     TEST_ERROR(LEPT_PARSE_INVALID_VALUE, "[1,]");
     TEST_ERROR(LEPT_PARSE_INVALID_VALUE, "[\"a\", nul]");
@@ -255,16 +301,23 @@ static void test_parse_invalid_array() {
     TEST_ERROR(LEPT_PARSE_MISS_COMMA_OR_SQUARE_BRACKET, "[[]");
 }
 
+
+/**
+ * @brief 测试解析对象类型
+ * 
+ */
 static void test_parse_object() {
     lept_value v;
     size_t i;
 
+    // 是否成功解析对象
     lept_init(&v);
     EXPECT_EQ_INT(LEPT_PARSE_OK, lept_parse(&v, " { } "));
     EXPECT_EQ_INT(LEPT_OBJECT, lept_get_type(&v));
     EXPECT_EQ_SIZE_T(0, lept_get_object_size(&v));
     lept_free(&v);
 
+    // 是否成功解析对象内的键值对
     lept_init(&v);
     EXPECT_EQ_INT(LEPT_PARSE_OK, lept_parse(&v,
         " { "
@@ -279,18 +332,25 @@ static void test_parse_object() {
     ));
     EXPECT_EQ_INT(LEPT_OBJECT, lept_get_type(&v));
     EXPECT_EQ_SIZE_T(7, lept_get_object_size(&v));
+
     EXPECT_EQ_STRING("n", lept_get_object_key(&v, 0), lept_get_object_key_length(&v, 0));
     EXPECT_EQ_INT(LEPT_NULL,   lept_get_type(lept_get_object_value(&v, 0)));
+
     EXPECT_EQ_STRING("f", lept_get_object_key(&v, 1), lept_get_object_key_length(&v, 1));
     EXPECT_EQ_INT(LEPT_FALSE,  lept_get_type(lept_get_object_value(&v, 1)));
+
     EXPECT_EQ_STRING("t", lept_get_object_key(&v, 2), lept_get_object_key_length(&v, 2));
     EXPECT_EQ_INT(LEPT_TRUE,   lept_get_type(lept_get_object_value(&v, 2)));
+
     EXPECT_EQ_STRING("i", lept_get_object_key(&v, 3), lept_get_object_key_length(&v, 3));
     EXPECT_EQ_INT(LEPT_NUMBER, lept_get_type(lept_get_object_value(&v, 3)));
     EXPECT_EQ_DOUBLE(123.0, lept_get_number(lept_get_object_value(&v, 3)));
+
     EXPECT_EQ_STRING("s", lept_get_object_key(&v, 4), lept_get_object_key_length(&v, 4));
     EXPECT_EQ_INT(LEPT_STRING, lept_get_type(lept_get_object_value(&v, 4)));
     EXPECT_EQ_STRING("abc", lept_get_string(lept_get_object_value(&v, 4)), lept_get_string_length(lept_get_object_value(&v, 4)));
+
+    // 内部数组是否解析成功
     EXPECT_EQ_STRING("a", lept_get_object_key(&v, 5), lept_get_object_key_length(&v, 5));
     EXPECT_EQ_INT(LEPT_ARRAY, lept_get_type(lept_get_object_value(&v, 5)));
     EXPECT_EQ_SIZE_T(3, lept_get_array_size(lept_get_object_value(&v, 5)));
@@ -299,6 +359,8 @@ static void test_parse_object() {
         EXPECT_EQ_INT(LEPT_NUMBER, lept_get_type(e));
         EXPECT_EQ_DOUBLE(i + 1.0, lept_get_number(e));
     }
+
+    // 内部嵌套对象是否解析成功
     EXPECT_EQ_STRING("o", lept_get_object_key(&v, 6), lept_get_object_key_length(&v, 6));
     {
         lept_value* o = lept_get_object_value(&v, 6);
@@ -314,6 +376,11 @@ static void test_parse_object() {
     lept_free(&v);
 }
 
+
+/**
+ * @brief 测试无效对象解析
+ * 
+ */
 static void test_parse_invalid_obj() {
     TEST_ERROR(LEPT_PARSE_MISS_KEY, "{:1,");
     TEST_ERROR(LEPT_PARSE_MISS_KEY, "{1:1,");
@@ -331,6 +398,11 @@ static void test_parse_invalid_obj() {
     TEST_ERROR(LEPT_PARSE_MISS_COMMA_OR_CURLY_BRACKET, "{\"a\":{}");
 }
 
+
+/**
+ * @brief 测试修改为NULL类型是否成功
+ * 
+ */
 static void test_access_null() {
     lept_value v;
     lept_init(&v);
@@ -340,6 +412,11 @@ static void test_access_null() {
     lept_free(&v);
 }
 
+
+/**
+ * @brief 测试修改为布尔类型是否成功
+ * 
+ */
 static void test_access_boolean() {
     lept_value v;
     lept_init(&v);
@@ -351,6 +428,11 @@ static void test_access_boolean() {
     lept_free(&v);
 }
 
+
+/**
+ * @brief 测试修改为数字类型是否成功
+ * 
+ */
 static void test_access_number() {
     lept_value v;
     lept_init(&v);
@@ -360,6 +442,11 @@ static void test_access_number() {
     lept_free(&v);
 }
 
+
+/**
+ * @brief 测试设置为字符串是否成功
+ * 
+ */
 static void test_access_string() {
     lept_value v;
     lept_init(&v);
@@ -370,6 +457,11 @@ static void test_access_string() {
     lept_free(&v);
 }
 
+
+/**
+ * @brief 测试数组类型的access接口
+ * 
+ */
 static void test_access_arrary() {
 // 测试一
     lept_value a1, a2, a, e;
@@ -402,6 +494,8 @@ static void test_access_arrary() {
     EXPECT_EQ_SIZE_T(0, lept_get_array_size(&a2));
     EXPECT_EQ_SIZE_T(0, lept_get_array_size(&a1));
     EXPECT_EQ_INT(TRUE, lept_is_equal(&a1, &a2));
+
+
 // 测试二
     for (j = 0; j <= 5; j += 5) {
         lept_set_array(&a, j);
@@ -439,13 +533,17 @@ static void test_access_arrary() {
     for (i = 0; i < 6; i++)
         EXPECT_EQ_DOUBLE((double)i + 2, lept_get_number(lept_get_array_element(&a, i)));
 
-    
     lept_free(&a1);
     lept_free(&a2);
     lept_free(&a);
     lept_free(&e);
 }
 
+
+/**
+ * @brief 测试对象类型相关接口
+ * 
+ */
 static void test_access_object() {
     lept_value o, v, *pv;
     size_t i, j, index;
@@ -518,6 +616,11 @@ static void test_access_object() {
     lept_free(&o);
 }
 
+
+/**
+ * @brief: 测试把 JSON 值转换为数字类型字符串
+ * @notes: 这里用到了往返测试，即先将原始字符串解析为JSON值，再stringfy为目标字符串，比较两个字符串是否一致 
+ */
 static void test_stringify_number() {
     TEST_ROUNDTRIP("0");
     TEST_ROUNDTRIP("-0");
@@ -541,6 +644,11 @@ static void test_stringify_number() {
     TEST_ROUNDTRIP("-1.7976931348623157e+308");
 }
 
+
+/**
+ * @brief 测试把 JSON 值转换为字符串类型字符串
+ * 
+ */
 static void test_stringify_string() {
     TEST_ROUNDTRIP("\"\"");
     TEST_ROUNDTRIP("\"Hello\"");
@@ -549,17 +657,32 @@ static void test_stringify_string() {
     TEST_ROUNDTRIP("\"Hello\\u0000World\"");
 }
 
+
+/**
+ * @brief 测试把 JSON 值转换为数组类型字符串
+ * 
+ */
 static void test_stringify_array() {
     TEST_ROUNDTRIP("[]");
     TEST_ROUNDTRIP("[\"abc\"]");
     TEST_ROUNDTRIP("[null,false,true,123,\"abc\",[1,2,3]]");
 }
 
+
+/**
+ * @brief 测试把 JSON 值转换为对象类型字符串
+ * 
+ */
 static void test_stringify_object() {
     TEST_ROUNDTRIP("{}");
     TEST_ROUNDTRIP("{\"n\":null,\"f\":false,\"t\":true,\"i\":123,\"s\":\"abc\",\"a\":[1,2,3],\"o\":{\"1\":1,\"2\":2,\"3\":3}}");
 }
 
+
+/**
+ * @brief JSON文本生成器集成测试
+ * 
+ */
 static void test_stringify() {
     TEST_ROUNDTRIP("null");
     TEST_ROUNDTRIP("false");
@@ -570,6 +693,11 @@ static void test_stringify() {
     test_stringify_object();
 }
 
+
+/**
+ * @brief API函数测试：lept_is_equal()
+ * 
+ */
 static void test_is_euqal() {
     TEST_EQUAL("true", "true", 1);
     TEST_EQUAL("true", "false", 0);
@@ -596,6 +724,11 @@ static void test_is_euqal() {
     TEST_EQUAL("{\"a\":{\"b\":{\"c\":{}}}}", "{\"a\":{\"b\":{\"c\":[]}}}", 0);
 }
 
+
+/**
+ * @brief API函数测试：lept_copy()
+ * 
+ */
 static void test_copy() {
     lept_value v1, v2;
     lept_init(&v1);
@@ -607,6 +740,11 @@ static void test_copy() {
     lept_free(&v2);
 }
 
+
+/**
+ * @brief API函数测试：lept_move()
+ * 
+ */
 static void test_move() {
     lept_value v1, v2, v3;
     lept_init(&v1);
@@ -622,6 +760,11 @@ static void test_move() {
     lept_free(&v3);
 }
 
+
+/**
+ * @brief API函数测试：lept_swap()
+ * 
+ */
 static void test_swap() {
     lept_value v1, v2;
     lept_init(&v1);
@@ -635,6 +778,11 @@ static void test_swap() {
     lept_free(&v2);
 }
 
+
+/**
+ * @brief API函数继承测试：拷贝、移动、交换
+ * 
+ */
 static void test_copy_move_swap() {
     const char* json = "{\"a\":[1,2],\"b\":3}";
     char* json2;
@@ -664,7 +812,9 @@ static void test_copy_move_swap() {
     lept_free(&v);
 }
 
+
 int main() {
+    // 测试解析器
     test_parse_literal();
     test_parse_number();
     test_parse_invalid_num();
@@ -676,6 +826,7 @@ int main() {
     test_parse_object();
     test_parse_invalid_obj();
 
+    // 测试access接口
     test_access_null();
     test_access_boolean();
     test_access_number();
@@ -683,7 +834,10 @@ int main() {
     test_access_arrary();
     test_access_object();
 
+    // 测试生成器
     test_stringify();
+
+    // 测试基础函数
     test_is_euqal();
     test_copy();
     test_move();

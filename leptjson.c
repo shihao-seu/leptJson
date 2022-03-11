@@ -2,11 +2,10 @@
 #  Author:           shihao - https://github.com/shihao-seu
 #  Email:            shihao10Civil@163.com
 #  FileName:         leptjson.c
-#  Description:      None
+#  Description:      leptjson 的实现文件，含有内部的类型声明和函数实现。此文件会编译成库
 #  Version:          0.0.1
 #  CreatingDate:     2021-Apr-Tue
 #  History:          None
-#  Copyright 2021-2031 Shi Hao
 =============================================================================*/
 
 #include "leptjson.h"
@@ -23,9 +22,10 @@
 
 
 /*
-    当程序以 release 配置编译时（定义了 NDEBUG 宏），assert() 不会做检测；
-而当在 debug 配置时，则会在运行时检测 assert(cond) 中的条件是否为真（非 0），
-断言失败会直接令程序崩溃。
+* 关于assert：
+* 当程序以 release 配置编译时（定义了 NDEBUG 宏），assert() 不会做检测
+* 而当在 debug 配置时，则会在运行时检测 assert(cond) 中的条件是否为真（非 0）
+* 断言失败会直接令程序崩溃。
 */
 #define EXPECT(c, ch)       do { assert(*c->json == (ch)); c->json++; } while (0)
 #define ISDIGIT(ch)         ((ch) >= '0' && (ch) <= '9')
