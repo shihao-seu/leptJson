@@ -18,11 +18,13 @@
  */
 typedef enum { LEPT_NULL, LEPT_FALSE, LEPT_TRUE, LEPT_NUMBER, LEPT_STRING, LEPT_ARRAY, LEPT_OBJECT } lept_type;
 
+typedef struct t_lept_member lept_member;
+typedef struct t_lept_value lept_value;
 
 /**
  * @brief：json值，JSON 文本被解析为一个树状数据结构
  */
-typedef struct t_lept_value{
+struct t_lept_value{
     union {
         struct { lept_member* m; size_t size, capacity; }o; /* obeject*/
         struct { char* str; size_t size; }s;                /* string */
@@ -30,16 +32,16 @@ typedef struct t_lept_value{
         double n;                                           /* number */
     } u;
     lept_type type;
-} lept_value;
+};
 
 
 /**
  * @brief：
  */
-typedef struct t_lept_member {
+struct t_lept_member {
     char* k; size_t klen;   /* member key string, key string length */
     lept_value v;           /* member value */
-} lept_member;
+};
 
 
 /**
